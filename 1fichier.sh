@@ -71,7 +71,7 @@ downloadFile() {
 	local tempDir=${baseDir}/$(mktemp --directory "tmp.XXX")
 	lastTempDir=${tempDir}
 
-	local filenameRegEx='>Filename :<.*<td class="normal">(.*)</td>.*>Date :<'
+	local filenameRegEx='<td class="normal"><span style="font-weight:bold">([^<]+)</span>'
 	local maxCount=500
 	local count=1
 	local slotFound="false"
