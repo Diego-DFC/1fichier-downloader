@@ -12,6 +12,8 @@ I grabbed this script and rewrote most parts of it. My improvements are
 - Verify downloaded files (very limited).
 - Use temp folder for all temporary files.
 - Remove temporary files after download.
+- macOS compatibility.
+- Checks downloaded file size.
 
 ## Usage
 
