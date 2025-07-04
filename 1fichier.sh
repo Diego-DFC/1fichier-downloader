@@ -43,13 +43,13 @@ failedDownload() {
 
 removeTempDir() {
 	local tempDir=${1}
-	rm --recursive "${tempDir}"
+	rm -r "${tempDir}"
 }
 
 
 removeCookies() {
 	local cookieFile=${1}
-	rm --force "${cookieFile}"
+	rm -f "${cookieFile}"
 }
 
 
@@ -71,9 +71,9 @@ downloadFile() {
 	local tempDir=${baseDir}/$(mktemp --directory "tmp.XXX")
 	lastTempDir=${tempDir}
 
-	local filenameRegEx='<td class="normal"><span style="font-weight:bold">([^<]+)</span>'
+	local filenameRegEx='<td class="normal"><span style="font-weight:bold">([^<]+)</span>.*<span style="font-size:0.9em;font-style:italic">([^<]+)</span>'
 	local maxCount=500
-	local count=1
+	local count=0
 	local slotFound="false"
 	local alreadyDownloaded="false"
 	while [ ${count} -le ${maxCount} ] ; do
@@ -86,16 +86,35 @@ downloadFile() {
 
 		local downloadPage=$(tcurl --insecure --cookie-jar "${cookies}" --silent --show-error "${url}")
 		if [[ "${downloadPage}" =~ ${filenameRegEx} ]] ; then
+			echo
 			local filename=${BASH_REMATCH[1]}
+			#New code
+			local size=${BASH_REMATCH[2]}
+			if [ ${count} -eq 1 ] ; then
+				echo "Filename: ${filename}"
+				echo "Size: ${size}"
+			fi
+			local size_value=$(echo "$size" | sed -E 's/^([0-9.]+) .+$/\1/')
+			local size_unit=$(echo "$size" | sed -E 's/^[0-9.]+ ([KMGTkmgt])o?b?O?B?$/\1/' | tr '[:lower:]' '[:upper:]')
+			local multiplier=1
+			case "$size_unit" in
+				K) multiplier=$((1024)) ;;
+				M) multiplier=$((1024**2)) ;;
+				G) multiplier=$((1024**3)) ;;
+				T) multiplier=$((1024**4)) ;;
+				*) echo "Unsupported or missing unit: '$size_unit'" >&2; exit 1 ;;
+			esac
+			local expected_size_bytes=$(awk -v val="$size_value" -v mul="$multiplier" 'BEGIN { printf "%.0f", val * mul }')
+			
 			if [ -e "${baseDir}/${filename}" ] ; then
 				alreadyDownloaded="true"
 				break
 			fi
 		fi
 
-		grep --extended-regexp --quiet '<span style="color:red">Warning !</span>|<span style="color:red">Attention !</span>' <<< "${downloadPage}"
+		grep -E -q '<span style="color:red">Warning !</span>|<span style="color:red">Attention !</span>' <<< "${downloadPage}"
 		if [ ! "$?" = "0" ] ; then
-			local checkSlot=$(grep --only-matching --perl-regexp 'name="adz" value="\K[^"]+' <<< "${downloadPage}")
+			local checkSlot=$(perl -nle'print $& while m{name="adz" value="\K[^"]+}g' <<< "${downloadPage}")
 			if [ ${checkSlot} ] ; then
 				echo "Found. Start downloading..."
 				slotFound="true"
@@ -120,13 +139,20 @@ downloadFile() {
 	fi
 
 	local downloadLinkPage=$(tcurl --insecure --location --cookie "${cookies}" --cookie-jar "${cookies}" --silent --show-error --form "submit=Download" --form "adz=${get_me}" "${url}")
-	local downloadLink=$(echo "${downloadLinkPage}" | grep --after-context=2 '<div style="width:600px;height:80px;margin:auto;text-align:center;vertical-align:middle">' | grep --only-matching --perl-regexp '<a href="\K[^"]+')
+	local downloadLink=$(echo "${downloadLinkPage}" | grep --after-context=2 '<div style="width:600px;height:80px;margin:auto;text-align:center;vertical-align:middle">' | perl -nle'print $& while m{<a href="\K[^"]+}g')
 	if [ "${downloadLink}" ] ; then
 		tcurl --insecure --cookie "${cookies}" --referer "${url}" --output "${tempDir}/${filename}" "${downloadLink}" --remote-header-name --remote-name
 		if [ "$?" = "0" ] ; then
 			removeCookies "${cookies}"
 			if [ -e "${tempDir}/${filename}" ] ; then
-				mv "${tempDir}/${filename}" "${baseDir}/"
+				local actual_size_bytes=$(stat -c %s "${tempDir}/${filename}")
+				local lower_bound=$(awk -v e="$expected_size_bytes" 'BEGIN { printf "%.0f", e * 0.95 }')
+				if (( actual_size_bytes >= lower_bound )); then
+					mv "${tempDir}/${filename}" "${baseDir}/"
+				else
+					echo "Download failed. Sizes don't match."
+					failedDownload "${baseDir}" "${url}"
+				fi
 			else
 				echo "Download failed."
 				failedDownload "${baseDir}" "${url}"
