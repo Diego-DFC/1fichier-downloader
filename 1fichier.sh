@@ -16,7 +16,6 @@
 
 # Some lines were taken from the script 1fichier.sh by SoupeAuLait@Rindexxx
 
-
 checkTor() {
 	local torPort=
 	for port in 9050 9150 ; do
@@ -145,7 +144,11 @@ downloadFile() {
 		if [ "$?" = "0" ] ; then
 			removeCookies "${cookies}"
 			if [ -e "${tempDir}/${filename}" ] ; then
-				local actual_size_bytes=$(stat -c %s "${tempDir}/${filename}")
+				if [ "$(uname -s)" = "Darwin" ]; then
+					local actual_size_bytes=$(stat -f%z "${tempDir}/${filename}")
+				else
+					local actual_size_bytes=$(stat -c %s "${tempDir}/${filename}")
+				fi
 				local lower_bound=$(awk -v e="$expected_size_bytes" 'BEGIN { printf "%.0f", e * 0.95 }')
 				if (( actual_size_bytes >= lower_bound )); then
 					mv "${tempDir}/${filename}" "${baseDir}/"
