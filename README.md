@@ -23,23 +23,7 @@ or
 
 `./1fichier.sh URL`
 
-## Contact
-
-Author: eismann
-
-Freemail: eismann@vu6osveg7rpxh2ckrh7ivdyilprn52px2gtxtp4bxjckn46oc6ia.freemail [^1]
-
-Frost: eismann@5H+yXYkQHMnwtQDzJB8thVYAAIs
-
-FMS: eismann
-
-Sone: [eismann](http://localhost:8888/Sone/viewSone.html?sone=rTzpVIb8X3PoSon~io8IW~Le6ffRp3m-gbpEpvPOF5A) [^2]
-
-I do not regularly read the email associated with GitHub.
 
 ## License
 
 1fichier.sh by eismann@5H+yXYkQHMnwtQDzJB8thVYAAIs is licensed under the [Apache License, Version 2.0](https://www.apache.org/licenses/LICENSE-2.0).
-
-[^1]: Freemail requires a running Hyphanet node
-[^2]: Link requires a running Hyphanet node at http://localhost:8888/
